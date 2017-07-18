@@ -108,7 +108,6 @@ steal_encoder(struct drm_atomic_state *state,
 	struct drm_crtc_state *crtc_state;
 	struct drm_connector *connector;
 	struct drm_connector_state *connector_state;
-	int ret;
 
 	/*
 	 * We can only steal an encoder coming from a connector, which means we
@@ -139,9 +138,6 @@ steal_encoder(struct drm_atomic_state *state,
 		if (IS_ERR(connector_state))
 			return PTR_ERR(connector_state);
 
-		ret = drm_atomic_set_crtc_for_connector(connector_state, NULL);
-		if (ret)
-			return ret;
 		connector_state->best_encoder = NULL;
 	}
 
@@ -269,7 +265,7 @@ mode_fixup(struct drm_atomic_state *state)
 	struct drm_connector *connector;
 	struct drm_connector_state *conn_state;
 	int i;
-	bool ret;
+	int ret;
 
 	for_each_crtc_in_state(state, crtc, crtc_state, i) {
 		if (!crtc_state->mode_changed &&
@@ -913,23 +909,9 @@ static void wait_for_fences(struct drm_device *dev,
 	}
 }
 
-/**
- * drm_atomic_helper_framebuffer_changed - check if framebuffer has changed
- * @dev: DRM device
- * @old_state: atomic state object with old state structures
- * @crtc: DRM crtc
- *
- * Checks whether the framebuffer used for this CRTC changes as a result of
- * the atomic update.  This is useful for drivers which cannot use
- * drm_atomic_helper_wait_for_vblanks() and need to reimplement its
- * functionality.
- *
- * Returns:
- * true if the framebuffer changed.
- */
-bool drm_atomic_helper_framebuffer_changed(struct drm_device *dev,
-					   struct drm_atomic_state *old_state,
-					   struct drm_crtc *crtc)
+static bool framebuffer_changed(struct drm_device *dev,
+				struct drm_atomic_state *old_state,
+				struct drm_crtc *crtc)
 {
 	struct drm_plane *plane;
 	struct drm_plane_state *old_plane_state;
@@ -946,7 +928,6 @@ bool drm_atomic_helper_framebuffer_changed(struct drm_device *dev,
 
 	return false;
 }
-EXPORT_SYMBOL(drm_atomic_helper_framebuffer_changed);
 
 /**
  * drm_atomic_helper_wait_for_vblanks - wait for vblank on crtcs
@@ -981,8 +962,7 @@ drm_atomic_helper_wait_for_vblanks(struct drm_device *dev,
 		if (old_state->legacy_cursor_update)
 			continue;
 
-		if (!drm_atomic_helper_framebuffer_changed(dev,
-				old_state, crtc))
+		if (!framebuffer_changed(dev, old_state, crtc))
 			continue;
 
 		ret = drm_crtc_vblank_get(crtc);

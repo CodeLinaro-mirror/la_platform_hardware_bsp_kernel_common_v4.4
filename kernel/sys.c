@@ -2372,6 +2372,9 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 		error = prctl_get_tid_address(me, (int __user **)arg2);
 		break;
 	case PR_SET_TIMERSLACK_PID:
+		if (task_pid_vnr(current) != (pid_t)arg3 &&
+				!capable(CAP_SYS_NICE))
+			return -EPERM;
 		rcu_read_lock();
 		tsk = find_task_by_vpid((pid_t)arg3);
 		if (tsk == NULL) {
@@ -2380,10 +2383,6 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 		}
 		get_task_struct(tsk);
 		rcu_read_unlock();
-		if (ptrace_may_access(tsk, PTRACE_MODE_ATTACH)) {
-			put_task_struct(tsk);
-			return -EPERM;
-		}
 		if (arg2 <= 0)
 			tsk->timer_slack_ns =
 				tsk->default_timer_slack_ns;

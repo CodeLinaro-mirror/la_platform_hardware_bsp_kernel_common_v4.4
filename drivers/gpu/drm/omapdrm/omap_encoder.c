@@ -178,7 +178,7 @@ struct drm_encoder *omap_encoder_init(struct drm_device *dev,
 	encoder = &omap_encoder->base;
 
 	drm_encoder_init(dev, encoder, &omap_encoder_funcs,
-			 DRM_MODE_ENCODER_TMDS, NULL);
+			 DRM_MODE_ENCODER_TMDS);
 	drm_encoder_helper_add(encoder, &omap_encoder_helper_funcs);
 
 	return encoder;
