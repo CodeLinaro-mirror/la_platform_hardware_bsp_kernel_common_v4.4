@@ -1843,7 +1843,7 @@ static int ctl_ioctl(uint command, struct dm_ioctl __user *user)
 	if (r)
 		goto out;
 
-	param->data_size = sizeof(*param);
+	param->data_size = offsetof(struct dm_ioctl, data);
 	r = fn(param, input_param_size);
 
 	if (unlikely(param->flags & DM_BUFFER_FULL_FLAG) &&
@@ -1936,8 +1936,10 @@ int dm_ioctl_export(struct mapped_device *md, const char *name,
 	int r = 0;
 	struct hash_cell *hc;
 
-	if (!md)
-		return -ENXIO;
+	if (!md) {
+		r = -ENXIO;
+		goto out;
+	}
 
 	/* The name and uuid can only be set once. */
 	mutex_lock(&dm_hash_cells_mutex);
@@ -1945,17 +1947,19 @@ int dm_ioctl_export(struct mapped_device *md, const char *name,
 	mutex_unlock(&dm_hash_cells_mutex);
 	if (hc) {
 		DMERR("%s: already exported", dm_device_name(md));
-		return -ENXIO;
+		r = -ENXIO;
+		goto out;
 	}
 
 	r = dm_hash_insert(name, uuid, md);
 	if (r) {
 		DMERR("%s: could not bind to '%s'", dm_device_name(md), name);
-		return r;
+		goto out;
 	}
 
 	/* Let udev know we've changed. */
 	dm_kobject_uevent(md, KOBJ_CHANGE, dm_get_event_nr(md));
+out:
 	return r;
 }
 /**
